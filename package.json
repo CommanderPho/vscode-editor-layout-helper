@@ -2,7 +2,7 @@
   "name": "editor-layout-helper",
 	"displayName": "Editor Layout Helper",
 	"description": "Helps with changing and maintaining the editor layout.",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"publisher": "ssigwart",
 	"repository": {
 		"type": "git",
@@ -22,7 +22,7 @@
 	"activationEvents": [
 		"onStartupFinished"
 	],
-	"main": "./dist/extension.js",
+	"browser": "./dist/extension.js",
 	"contributes": {
 		"commands": [
 			{
