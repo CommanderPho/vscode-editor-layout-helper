@@ -75,6 +75,7 @@ async function debugPrintEditorLayouts() {
 async function setEqualHorizontalWidths(): Promise<void>
 {
 	const layout: EditorGroupLayout = await vscode.commands.executeCommand("vscode.getEditorLayout");
+	console.log(`setEqualHorizontalWidths() - layout: ${layout}...`);
 	if (layout.orientation === GroupOrientation.VERTICAL)
 	{
 		for (let group of layout.groups)
@@ -196,6 +197,7 @@ async function increaseLeftEditorSize(): Promise<void> {
  */
 async function increaseRightEditorSize(): Promise<void> {
 	const layout: EditorGroupLayout = await vscode.commands.executeCommand("vscode.getEditorLayout");
+	console.log(`increaseRightEditorSize() - layout: ${layout}...`);
 	if (layout.orientation === GroupOrientation.VERTICAL) {
 		for (let group of layout.groups) {
 			const groups = group.groups;
