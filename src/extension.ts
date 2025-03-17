@@ -2,6 +2,11 @@ import * as vscode from "vscode";
 import { EditorGroupLayout, GroupOrientation } from "./editorGroupsService";
 
 
+// At the top of your file, add:
+let distributeButton: vscode.StatusBarItem;
+let increaseLeftButton: vscode.StatusBarItem;
+let increaseRightButton: vscode.StatusBarItem;
+
 
 /**
  * Print debug information about editor layouts to the console
@@ -234,6 +239,7 @@ async function increaseRightEditorSize(): Promise<void> {
 	}
 }
 
+
 export function activate(context: vscode.ExtensionContext) {
 	// Register commands
 	context.subscriptions.push(vscode.commands.registerCommand('editor-layout-helper.debugPrintEditorLayouts', debugPrintEditorLayouts));
@@ -242,22 +248,24 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('editor-layout-helper.increaseRightEditorSize', increaseRightEditorSize));
 	
 	// Create status bar items
-	const distributeButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+	distributeButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 	distributeButton.text = "$(split-horizontal) ↔️";
 	distributeButton.tooltip = "Distribute Editors Horizontally";
 	distributeButton.command = 'editor-layout-helper.distributeEditorsHorizontal';
-	distributeButton.show();
 	
-	const increaseLeftButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+	increaseLeftButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
 	increaseLeftButton.text = "$(arrow-left) ◀️➕";
 	increaseLeftButton.tooltip = "Increase Left Editor Pane Size";
 	increaseLeftButton.command = 'editor-layout-helper.increaseLeftEditorSize';
-	increaseLeftButton.show();
 	
-	const increaseRightButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 98);
+	increaseRightButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 98);
 	increaseRightButton.text = "$(arrow-right) ▶️➕";
 	increaseRightButton.tooltip = "Increase Right Editor Pane Size";
 	increaseRightButton.command = 'editor-layout-helper.increaseRightEditorSize';
+	
+	// Show all buttons initially
+	distributeButton.show();
+	increaseLeftButton.show();
 	increaseRightButton.show();
 	
 	// Register the status bar items so they get properly disposed
@@ -265,11 +273,19 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(increaseLeftButton);
 	context.subscriptions.push(increaseRightButton);
 	
-	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(async () => {
+	// Ensure visibility whenever the active editor changes
+	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => {
+		distributeButton.show();
+		increaseLeftButton.show();
+		increaseRightButton.show();
+		
+		// Your existing code for enforcing widths
 		const shouldEnforceWidths = vscode.workspace.getConfiguration("editor-layout-helper").get("enforceEqualHorizontalWidthsOnActiveEditorChange");
 		if (shouldEnforceWidths)
-			await setEqualHorizontalWidths();
-	}));
+			setEqualHorizontalWidths();
+	}));	
 }
+
+
 export function deactivate() {
 }
