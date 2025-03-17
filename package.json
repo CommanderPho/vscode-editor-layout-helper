@@ -20,7 +20,8 @@
 		"horizontal"
 	],
 	"activationEvents": [
-		"onStartupFinished"
+		"onStartupFinished",
+		"*"
 	],
 	"browser": "./dist/extension.js",
 	"contributes": {
