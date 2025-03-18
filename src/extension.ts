@@ -9,6 +9,160 @@ let increaseRightButton: vscode.StatusBarItem;
 
 
 /**
+ * Shared function for adjusting editor sizes
+ * @param increaseLeftSide Whether to increase the left/top side (true) or right/bottom side (false)
+ * @returns Promise that resolves when the adjustment is complete
+ */
+function computeTotalSize(groups: any[]): number {
+	// Calculate total size and verify all groups have sizes
+	var totalSize = 0;
+	// let allSizesDefined = true;
+
+	for (let group of groups) {
+		const nested_groups = group.groups;
+		if ((nested_groups !== undefined) && (nested_groups.length > 1)) {
+			console.log(`    found nested groups with ${nested_groups.length} items`);
+			// Calculate total size and verify all groups have sizes
+			let subgroupTotalSize = computeTotalSize(nested_groups); // call recurrsively onl the nested_groups
+			console.log(`      subgroupTotalSize: ${subgroupTotalSize}`);
+			totalSize += subgroupTotalSize;
+
+			// let totalSize = 0;
+			// let allSizesDefined = true;
+			
+			// for (let nestedGroup of groups) {
+			//     if (nestedGroup.size === undefined) {
+			//         allSizesDefined = false;
+			//         console.log(`      found nested group with undefined size! Breaking.`);
+			//         break;
+			//     }
+			//     totalSize += nestedGroup.size;
+			// }
+		}
+		else {
+			// not nested groups, so add to total size
+			if (group.size === undefined) {
+				console.warn(`    group.size === undefined`);
+				// totalSize += group.size;
+			}
+			else {
+				totalSize += group.size;
+			}
+		}
+	}
+	return totalSize;
+}
+
+
+
+/**
+ * Shared function for adjusting editor sizes
+ * @param increaseLeftSide Whether to increase the left/top side (true) or right/bottom side (false)
+ * @returns Promise that resolves when the adjustment is complete
+ */
+async function adjustEditorSizes(increaseLeftSide: boolean = true): Promise<void> {
+    const layout: EditorGroupLayout = await vscode.commands.executeCommand("vscode.getEditorLayout");
+    const action = increaseLeftSide ? "increase left" : "increase right";
+    console.log(`adjustEditorSizes(${action}) - layout: ${layout}...`);
+    
+    // Function to adjust sizes between two groups
+    function applySizeAdjustment(groups: any[], totalSize: number): boolean {
+        // Calculate adjustment amount (10% of total width)
+        const adjustAmount = Math.max(1, Math.floor(totalSize * 0.1));
+        
+        // Don't let any pane get smaller than 10% of total space
+        const minSize = Math.max(1, Math.floor(totalSize * 0.1));
+        
+        // Determine which group gets larger and which gets smaller
+        const largerIndex = increaseLeftSide ? 0 : 1;
+        const smallerIndex = increaseLeftSide ? 1 : 0;
+        
+        // Make sure the groups exist and the one being reduced isn't too small already
+        if (groups[largerIndex].size !== undefined && 
+            groups[smallerIndex].size !== undefined && 
+            groups[smallerIndex].size > minSize) {
+            
+            const adjustedAmount = Math.min(adjustAmount, groups[smallerIndex].size - minSize);
+            groups[largerIndex].size += adjustedAmount;
+            groups[smallerIndex].size -= adjustedAmount;
+            
+            console.log(`      applying adjustment: ${adjustedAmount}.`);
+            return true;
+        }
+        return false;
+    }
+    
+    // CASE 1: Handle top-level horizontal split
+    const isTopLevelHorizontal = layout.orientation === GroupOrientation.HORIZONTAL;
+    if (isTopLevelHorizontal && layout.groups.length > 1) {
+        console.log(`    handling top-level horizontal split with ${layout.groups.length} groups`);
+        
+        // Calculate total size of all top-level groups
+        let totalSize = 0;
+        let allSizesDefined = true;
+        
+        for (let group of layout.groups) {
+            if (group.size === undefined) {
+                allSizesDefined = false;
+                break;
+            }
+            totalSize += group.size;
+        }
+        
+        if (allSizesDefined && layout.groups.length >= 2) {
+            console.log(`    totalSize of top-level groups: ${totalSize}`);
+            if (applySizeAdjustment(layout.groups, totalSize)) {
+                // Apply the new layout
+                await vscode.commands.executeCommand("vscode.setEditorLayout", layout);
+                console.log(`    done adjusting top-level groups.`);
+                return;
+            }
+        }
+    }
+    
+    // CASE 2: Handle nested groups
+    console.log(`    checking for nested groups...`);
+    for (let group of layout.groups) {
+        const groups = group.groups;
+        
+        if (groups !== undefined && groups.length > 1) {
+            console.log(`    found nested groups with ${groups.length} items`);
+            
+            // Calculate total size and verify all groups have sizes
+            let totalSize = 0;
+            let allSizesDefined = true;
+            
+            for (let nestedGroup of groups) {
+                if (nestedGroup.size === undefined) {
+                    allSizesDefined = false;
+                    console.log(`      found nested group with undefined size! Breaking.`);
+                    break;
+                }
+                totalSize += nestedGroup.size;
+            }
+            
+            if (allSizesDefined) {
+                console.log(`    totalSize of nested groups: ${totalSize}`);
+                if (applySizeAdjustment(groups, totalSize)) {
+                    // Apply the new layout
+                    await vscode.commands.executeCommand("vscode.setEditorLayout", layout);
+                    console.log(`    done adjusting nested groups.`);
+                    return;
+                }
+            }
+            
+            // Only check the first set of nested groups
+            break;
+        }
+    }
+    
+    console.log(`    no suitable groups found to adjust.`);
+}
+
+
+
+
+/**
  * Print debug information about editor layouts to the console
  */
 async function debugPrintEditorLayouts() {
@@ -221,7 +375,6 @@ async function increaseLeftEditorSize(): Promise<void> {
     
     console.log(`    no suitable groups found to adjust.`);
 }
-
 
 /**
  * Increase right editor pane size
