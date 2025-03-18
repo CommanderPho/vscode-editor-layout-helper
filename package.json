@@ -2,7 +2,7 @@
   "name": "editor-layout-helper",
 	"displayName": "Editor Layout Helper",
 	"description": "Helps with changing and maintaining the editor layout.",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"publisher": "ssigwart",
 	"repository": {
 		"type": "git",
@@ -21,10 +21,29 @@
 	],
 	"activationEvents": [
 		"onStartupFinished",
+		"onView:editorLayoutHelperView",
 		"*"
 	],
 	"browser": "./dist/extension.js",
 	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "editor-layout-helper",
+					"title": "Editor Layout",
+					"icon": "resources/layout-icon.svg"
+				}
+			]
+		},
+		"views": {
+			"editor-layout-helper": [
+				{
+					"id": "editorLayoutHelperView",
+					"name": "Current Layout",
+					"type": "webview"
+				}
+			]
+		},
 		"commands": [
 			{
 				"command": "editor-layout-helper.distributeEditorsHorizontal",
@@ -41,7 +60,13 @@
 			{
 				"command": "editor-layout-helper.increaseRightEditorSize",
 				"title": "Increase Right Editor Pane Size"
-			}		],
+			},
+			{
+				"command": "editor-layout-helper.refreshLayoutView",
+				"title": "Refresh Layout View",
+				"icon": "$(refresh)"
+			}
+		],
 		"configuration": {
 			"title": "Editor Layout Helper",
 			"properties": {
@@ -49,8 +74,22 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Whenever the active editor is changed, resize any horizontal splits to be even."
+				},
+				"editor-layout-helper.layoutViewRefreshInterval": {
+					"type": "number",
+					"default": 1000,
+					"description": "Interval in milliseconds to refresh the layout view"
 				}
 			}
+		},
+		"menus": {
+			"view/title": [
+				{
+					"command": "editor-layout-helper.refreshLayoutView",
+					"when": "view == editorLayoutHelperView",
+					"group": "navigation"
+				}
+			]
 		}
 	},
 	"scripts": {

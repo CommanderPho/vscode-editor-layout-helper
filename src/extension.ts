@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { EditorGroupLayout, GroupOrientation } from "./editorGroupsService";
+import { EditorLayoutViewProvider } from './layoutView';
 
 
 // At the top of your file, add:
@@ -7,7 +8,6 @@ let debugButton: vscode.StatusBarItem;
 let distributeButton: vscode.StatusBarItem;
 let increaseLeftButton: vscode.StatusBarItem;
 let increaseRightButton: vscode.StatusBarItem;
-
 
 /**
  * Shared function for adjusting editor sizes
@@ -311,6 +311,22 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('editor-layout-helper.increaseLeftEditorSize', increaseLeftEditorSize));
 	context.subscriptions.push(vscode.commands.registerCommand('editor-layout-helper.increaseRightEditorSize', increaseRightEditorSize));
 	
+    // Register the layout view provider
+    const layoutViewProvider = new EditorLayoutViewProvider(context.extensionUri, context);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(
+            EditorLayoutViewProvider.viewType,
+            layoutViewProvider
+        )
+    );
+    
+    // Add the refresh command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('editor-layout-helper.refreshLayoutView', () => {
+            layoutViewProvider.refreshView();
+        })
+    );
+
 	// Create status bar items
 	distributeButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 	distributeButton.text = "$(split-horizontal) ↔️";
@@ -327,31 +343,31 @@ export function activate(context: vscode.ExtensionContext) {
 	increaseRightButton.tooltip = "Increase Right Editor Pane Size";
 	increaseRightButton.command = 'editor-layout-helper.increaseRightEditorSize';
 
-  debugButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 97);
-	debugButton.text = "🐞";
-	debugButton.tooltip = "Debug Print Current Editor Layouts to Console";
-	debugButton.command = 'editor-layout-helper.debugPrintEditorLayouts';
+    debugButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 97);
+    debugButton.text = "🐞";
+    debugButton.tooltip = "Debug Print Current Editor Layouts to Console";
+    debugButton.command = 'editor-layout-helper.debugPrintEditorLayouts';
 
-	
-	// Show all buttons initially
-	distributeButton.show();
-	increaseLeftButton.show();
-	increaseRightButton.show();
-  debugButton.show();
-	
-	// Register the status bar items so they get properly disposed
-	context.subscriptions.push(distributeButton);
-	context.subscriptions.push(increaseLeftButton);
-	context.subscriptions.push(increaseRightButton);
-  context.subscriptions.push(debugButton);
-	
+
+    // Show all buttons initially
+    distributeButton.show();
+    increaseLeftButton.show();
+    increaseRightButton.show();
+    debugButton.show();
+
+    // Register the status bar items so they get properly disposed
+    context.subscriptions.push(distributeButton);
+    context.subscriptions.push(increaseLeftButton);
+    context.subscriptions.push(increaseRightButton);
+    context.subscriptions.push(debugButton);
+
 	// Ensure visibility whenever the active editor changes
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => {
-		distributeButton.show();
-		increaseLeftButton.show();
-		increaseRightButton.show();
-    debugButton.show();
-		
+        distributeButton.show();
+        increaseLeftButton.show();
+        increaseRightButton.show();
+        debugButton.show();
+
 		// Your existing code for enforcing widths
 		const shouldEnforceWidths = vscode.workspace.getConfiguration("editor-layout-helper").get("enforceEqualHorizontalWidthsOnActiveEditorChange");
 		if (shouldEnforceWidths)
