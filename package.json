@@ -1,122 +1,125 @@
 {
   "name": "editor-layout-helper",
-	"displayName": "Editor Layout Helper",
-	"description": "Helps with changing and maintaining the editor layout.",
-	"version": "1.2.0",
-	"publisher": "ssigwart",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/commanderpho/vscode-editor-layout-helper"
-	},
-	"engines": {
-		"vscode": "^1.77.0"
-	},
-	"categories": [
-		"Other"
-	],
-	"keywords": [
-		"editor layout",
-		"split",
-		"horizontal"
-	],
-	"activationEvents": [
-		"onStartupFinished",
-		"onView:editorLayoutHelperView",
-		"*"
-	],
-	"browser": "./dist/extension.js",
-	"contributes": {
-		"viewsContainers": {
-			"activitybar": [
-				{
-					"id": "editor-layout-helper",
-					"title": "Editor Layout",
-					"icon": "resources/layout-icon.svg"
-				}
-			]
-		},
-		"views": {
-			"editor-layout-helper": [
-				{
-					"id": "editorLayoutHelperView",
-					"name": "Current Layout",
-					"type": "webview"
-				}
-			]
-		},
-		"commands": [
-			{
-				"command": "editor-layout-helper.distributeEditorsHorizontal",
-				"title": "Distribute Editors Horizontally"
-			},
-			{
-				"command": "editor-layout-helper.debugPrintEditorLayouts",
-				"title": "Print Current Editor Layouts to Console"
-			},
-			{
-				"command": "editor-layout-helper.increaseLeftEditorSize",
-				"title": "Increase Left Editor Pane Size"
-			},
-			{
-				"command": "editor-layout-helper.increaseRightEditorSize",
-				"title": "Increase Right Editor Pane Size"
-			},
-			{
-				"command": "editor-layout-helper.refreshLayoutView",
-				"title": "Refresh Layout View",
-				"icon": "$(refresh)"
-			}
-		],
-		"configuration": {
-			"title": "Editor Layout Helper",
-			"properties": {
-				"editor-layout-helper.enforceEqualHorizontalWidthsOnActiveEditorChange": {
-					"type": "boolean",
-					"default": true,
-					"description": "Whenever the active editor is changed, resize any horizontal splits to be even."
-				},
-				"editor-layout-helper.layoutViewRefreshInterval": {
-					"type": "number",
-					"default": 1000,
-					"description": "Interval in milliseconds to refresh the layout view"
-				}
-			}
-		},
-		"menus": {
-			"view/title": [
-				{
-					"command": "editor-layout-helper.refreshLayoutView",
-					"when": "view == editorLayoutHelperView",
-					"group": "navigation"
-				}
-			]
-		}
-	},
-	"scripts": {
-		"vscode:prepublish": "yarn run package",
-		"compile": "webpack",
-		"watch": "webpack --watch",
-		"package": "webpack --mode production --devtool hidden-source-map",
-		"compile-tests": "tsc -p . --outDir out",
-		"watch-tests": "tsc -p . -w --outDir out",
-		"pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
-		"lint": "eslint src --ext ts",
-		"test": "node ./out/test/runTest.js"
-	},
-	"devDependencies": {
-		"@types/vscode": "^1.77.0",
-		"@types/glob": "^7.1.4",
-		"@types/mocha": "^9.0.0",
-		"@types/node": "14.x",
-		"@typescript-eslint/eslint-plugin": "^5.1.0",
-		"@typescript-eslint/parser": "^5.1.0",
-		"eslint": "^8.1.0",
-		"glob": "^7.1.7",
-		"mocha": "^9.1.3",
-		"typescript": "^4.4.4",
-		"ts-loader": "^9.2.5",
-		"webpack": "^5.52.1",
-		"webpack-cli": "^4.8.0",
-		"@vscode/test-electron": "^1.6.2"
-	}
+  "displayName": "Editor Layout Helper",
+  "description": "Helps with changing and maintaining the editor layout.",
+  "version": "1.2.0",
+  "publisher": "ssigwart",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/commanderpho/vscode-editor-layout-helper"
+  },
+  "engines": {
+    "vscode": "^1.77.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "editor layout",
+    "split",
+    "horizontal"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:editorLayoutHelperView",
+    "*"
+  ],
+  "browser": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "editor-layout-helper",
+          "title": "Editor Layout",
+          "icon": "resources/layout-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "editor-layout-helper": [
+        {
+          "id": "editorLayoutHelperView",
+          "name": "Current Layout",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "editor-layout-helper.distributeEditorsHorizontal",
+        "title": "Distribute Editors Horizontally"
+      },
+      {
+        "command": "editor-layout-helper.debugPrintEditorLayouts",
+        "title": "Print Current Editor Layouts to Console"
+      },
+      {
+        "command": "editor-layout-helper.increaseLeftEditorSize",
+        "title": "Increase Left Editor Pane Size"
+      },
+      {
+        "command": "editor-layout-helper.increaseRightEditorSize",
+        "title": "Increase Right Editor Pane Size"
+      },
+      {
+        "command": "editor-layout-helper.refreshLayoutView",
+        "title": "Refresh Layout View",
+        "icon": "$(refresh)"
+      }
+    ],
+    "configuration": {
+      "title": "Editor Layout Helper",
+      "properties": {
+        "editor-layout-helper.enforceEqualHorizontalWidthsOnActiveEditorChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whenever the active editor is changed, resize any horizontal splits to be even."
+        },
+        "editor-layout-helper.layoutViewRefreshInterval": {
+          "type": "number",
+          "default": 1000,
+          "description": "Interval in milliseconds to refresh the layout view"
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "editor-layout-helper.refreshLayoutView",
+          "when": "view == editorLayoutHelperView",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.1.4",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "14.x",
+    "@types/vscode": "^1.77.0",
+    "@types/vscode-webview": "^1.57.5",
+    "@typescript-eslint/eslint-plugin": "^5.1.0",
+    "@typescript-eslint/parser": "^5.1.0",
+    "@vscode/test-electron": "^1.6.2",
+    "eslint": "^8.1.0",
+    "fs": "^0.0.1-security",
+    "glob": "^7.1.7",
+    "mocha": "^9.1.3",
+    "path": "^0.12.7",
+    "ts-loader": "^9.2.5",
+    "typescript": "^4.4.4",
+    "webpack": "^5.52.1",
+    "webpack-cli": "^4.8.0"
+  }
 }
