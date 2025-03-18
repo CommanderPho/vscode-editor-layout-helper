@@ -138,11 +138,10 @@ async function increaseLeftEditorSize(): Promise<void> {
 
 	if (layout.orientation === GroupOrientation.HORIZONTAL) {
 		console.log(`    running with top-level groups (layout.groups): ${layout.groups}...`);
-
 		for (let group of layout.groups) {
 			const groups = group.groups;
 			console.log(`  Running for group: ${group} with groups: ${groups}...`);
-
+			
 			if (groups !== undefined && groups.length > 1) {
 				// Only apply to horizontal split with at least 2 panes
 				let isApplicable = true;
@@ -157,7 +156,7 @@ async function increaseLeftEditorSize(): Promise<void> {
 					}
 					totalSize += horizontalGroup.size;
 				}
-
+				console.log(`    totalSize: ${totalSize}.`);
 				if (isApplicable) {
 					// Calculate adjustment amount (10% of total width)
 					const adjustAmount = Math.max(1, Math.floor(totalSize * 0.1));
@@ -166,10 +165,7 @@ async function increaseLeftEditorSize(): Promise<void> {
 					const minSize = Math.max(1, Math.floor(totalSize * 0.1));
 					
 					// Apply adjustment - increase leftmost pane size
-					if (groups[0].size !== undefined && 
-						groups[1].size !== undefined && 
-						groups[1].size > minSize) {
-						
+					if ((groups[0].size !== undefined) && (groups[1].size !== undefined) && (groups[1].size > minSize)) {
 						const adjustedAmount = Math.min(adjustAmount, groups[1].size - minSize);
 						groups[0].size += adjustedAmount;
 						groups[1].size -= adjustedAmount;
@@ -183,12 +179,12 @@ async function increaseLeftEditorSize(): Promise<void> {
 				break; // Only adjust the first horizontal split found
 			}
 			else {
-				console.log(`      groups is undefined or has fewer than 2 items. Skipping.`);
+				console.error(`      groups is undefined or has fewer than 2 items. Skipping.`);
 			}
 		}
 	}
 	else {
-		console.log(`    layout.orientation is not HORIZONTAL: layout.orientation: ${layout.orientation}!`);
+		console.error(`    layout.orientation is not HORIZONTAL: layout.orientation: ${layout.orientation}!`);
 	}
 }
 
