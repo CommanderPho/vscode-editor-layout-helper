@@ -3,6 +3,7 @@ import { EditorGroupLayout, GroupOrientation } from "./editorGroupsService";
 
 
 // At the top of your file, add:
+let debugButton: vscode.StatusBarItem;
 let distributeButton: vscode.StatusBarItem;
 let increaseLeftButton: vscode.StatusBarItem;
 let increaseRightButton: vscode.StatusBarItem;
@@ -171,6 +172,9 @@ async function debugPrintEditorLayouts() {
   console.log("Layout orientation:", layout.orientation);
   console.log("Groups found:", layout.groups.length);
   
+  const totalSize = computeTotalSize(layout.groups);
+  console.log("Total size:", totalSize);
+
   // Helper function to recursively print group details
   function printGroupDetails(group: any, level: number = 0) {
     const indent = "  ".repeat(level);
@@ -322,22 +326,31 @@ export function activate(context: vscode.ExtensionContext) {
 	increaseRightButton.text = "$(arrow-right) ▶️➕";
 	increaseRightButton.tooltip = "Increase Right Editor Pane Size";
 	increaseRightButton.command = 'editor-layout-helper.increaseRightEditorSize';
+
+  debugButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 97);
+	debugButton.text = "🐞";
+	debugButton.tooltip = "Debug Print Current Editor Layouts to Console";
+	debugButton.command = 'editor-layout-helper.debugPrintEditorLayouts';
+
 	
 	// Show all buttons initially
 	distributeButton.show();
 	increaseLeftButton.show();
 	increaseRightButton.show();
+  debugButton.show();
 	
 	// Register the status bar items so they get properly disposed
 	context.subscriptions.push(distributeButton);
 	context.subscriptions.push(increaseLeftButton);
 	context.subscriptions.push(increaseRightButton);
+  context.subscriptions.push(debugButton);
 	
 	// Ensure visibility whenever the active editor changes
 	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => {
 		distributeButton.show();
 		increaseLeftButton.show();
 		increaseRightButton.show();
+    debugButton.show();
 		
 		// Your existing code for enforcing widths
 		const shouldEnforceWidths = vscode.workspace.getConfiguration("editor-layout-helper").get("enforceEqualHorizontalWidthsOnActiveEditorChange");
