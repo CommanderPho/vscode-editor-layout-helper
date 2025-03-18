@@ -11,7 +11,7 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
         private readonly _context: vscode.ExtensionContext
     ) {}
 
-    async resolveWebviewView(
+    resolveWebviewView(
         webviewView: vscode.WebviewView,
         context: vscode.WebviewViewResolveContext,
         _token: vscode.CancellationToken
@@ -20,52 +20,47 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.options = {
             enableScripts: true,
-            localResourceRoots: [
-                vscode.Uri.joinPath(this._extensionUri, 'media')
-            ]
+            localResourceRoots: [this._extensionUri]
         };
 
-        // Set the initial HTML content
-        // webviewView.webview.html = this._getWebviewContent(webviewView.webview);
-        // Await the Promise to get the actual string content
-        webviewView.webview.html = await this._getWebviewContent(webviewView.webview);
+        // Initial update
+        this._updateContent();
+
+        // Set up automatic refresh based on configuration
+        this._setupRefreshInterval();
+
+        // Listen for configuration changes
+        this._context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(e => {
+                if (e.affectsConfiguration('editor-layout-helper.layoutViewRefreshInterval')) {
+                    this._setupRefreshInterval();
+                }
+            })
+        );
+
+        // Listen for editor layout changes
+        this._context.subscriptions.push(
+            vscode.window.onDidChangeActiveTextEditor(() => this._updateContent()),
+            vscode.window.onDidChangeTextEditorViewColumn(() => this._updateContent()),
+            vscode.window.onDidChangeVisibleTextEditors(() => this._updateContent())
+        );
 
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(message => {
             switch (message.command) {
-                case 'ready':
-                    // Webview is ready, send initial content
+                case 'refresh':
                     this._updateContent();
                     break;
-                // Other cases...
+                case 'increaseLeftSize':
+                    vscode.commands.executeCommand('editor-layout-helper.increaseLeftEditorSize');
+                    setTimeout(() => this._updateContent(), 100); // Update after a brief delay
+                    break;
+                case 'increaseRightSize':
+                    vscode.commands.executeCommand('editor-layout-helper.increaseRightEditorSize');
+                    setTimeout(() => this._updateContent(), 100);
+                    break;
             }
-        });
-
-        // Set up automatic refresh based on configuration
-        this._setupRefreshInterval();
-    }
-
-
-    private async _getWebviewContent(webview: vscode.Webview): Promise<string> {
-        // Get URIs for resources
-        const cssPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'layoutView.css');
-        const jsPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'layoutView.js');
-        const htmlPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'layoutView.html');
-        
-        // Convert to webview URIs
-        const cssUri = webview.asWebviewUri(cssPath);
-        const jsUri = webview.asWebviewUri(jsPath);
-        
-        // Read HTML file using VS Code's workspace fs API (browser-compatible)
-        const htmlContentBuffer = await vscode.workspace.fs.readFile(htmlPath);
-        // Fix the TextDecoder issue by using a Buffer/string conversion that TypeScript recognizes
-        const htmlContent = Buffer.from(htmlContentBuffer).toString('utf8');
-        
-        // Replace placeholders
-        return htmlContent
-            .replace('${cssUri}', cssUri.toString())
-            .replace('${jsUri}', jsUri.toString());
-    }
+        });    }
 
     private _setupRefreshInterval() {
         // Clear any existing interval
@@ -85,8 +80,8 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    public async refreshView() {
-        await this._updateContent();
+    public refreshView() {
+        this._updateContent();
     }
 
     private async _updateContent() {
@@ -96,18 +91,129 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
 
         const layout: EditorGroupLayout = await vscode.commands.executeCommand("vscode.getEditorLayout");
         
-        // Generate HTML for the layout
-        const layoutHtml = this._generateLayoutHtml(layout.groups, layout.orientation);
-        
-        // Send the updated layout to the webview
-        this._view.webview.postMessage({
-            type: 'updateLayout',
-            layoutHtml: layoutHtml,
-            isHorizontal: layout.orientation === GroupOrientation.HORIZONTAL,
-            groupsCount: layout.groups.length
-        });
+        // Create HTML content for the view
+        this._view.webview.html = this._getHtmlForWebview(layout);
     }
 
+    private _getHtmlForWebview(layout: EditorGroupLayout): string {
+        const htmlContent = `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Editor Layout</title>
+            <style>
+                body {
+                    font-family: var(--vscode-font-family);
+                    color: var(--vscode-foreground);
+                    background-color: var(--vscode-editor-background);
+                    padding: 10px;
+                }
+                .layout-container {
+                    display: flex;
+                    flex-direction: ${layout.orientation === GroupOrientation.HORIZONTAL ? 'row' : 'column'};
+                    border: 1px solid var(--vscode-panel-border);
+                    height: 300px;
+                    margin-bottom: 10px;
+                }
+                .group {
+                    display: flex;
+                    flex-direction: column;
+                    border: 1px solid var(--vscode-panel-border);
+                    padding: 5px;
+                    overflow: hidden;
+                    position: relative;
+                }
+                .group-header {
+                    display: flex;
+                    align-items: center;
+                    position: relative;
+                    z-index: 2;
+                }
+                .group-label {
+                    text-align: center;
+                    font-size: 0.8em;
+                    padding: 2px;
+                    background-color: var(--vscode-editor-inactiveSelectionBackground);
+                    color: var(--vscode-editor-selectionForeground);
+                    flex-grow: 1;
+                }
+                .group-size {
+                    position: absolute;
+                    bottom: 2px;
+                    right: 2px;
+                    font-size: 0.7em;
+                    opacity: 0.8;
+                }
+                .nested-groups {
+                    display: flex;
+                    flex: 1;
+                    flex-direction: ${layout.orientation === GroupOrientation.HORIZONTAL ? 'column' : 'row'};
+                }
+                button {
+                    margin-top: 10px;
+                    background-color: var(--vscode-button-background);
+                    color: var(--vscode-button-foreground);
+                    border: none;
+                    padding: 5px 10px;
+                    cursor: pointer;
+                }
+                button:hover {
+                    background-color: var(--vscode-button-hoverBackground);
+                }
+                .resize-button {
+                    margin: 0 2px;
+                    padding: 0 4px;
+                    font-size: 0.8em;
+                    height: 18px;
+                    min-width: 18px;
+                    z-index: 3;
+                }
+                .resize-left {
+                    margin-left: 3px;
+                }
+                .resize-right {
+                    margin-right: 3px;
+                }
+                .info {
+                    margin-top: 10px;
+                    font-size: 0.9em;
+                }
+            </style>
+        </head>
+        <body>
+            <h3>Current Editor Layout</h3>
+            <div class="layout-container">
+                ${this._generateLayoutHtml(layout.groups, layout.orientation)}
+            </div>
+            <div class="info">
+                <p>Orientation: ${layout.orientation === GroupOrientation.HORIZONTAL ? 'Horizontal' : 'Vertical'}</p>
+                <p>Groups: ${layout.groups.length}</p>
+            </div>
+            <button id="refreshBtn">Refresh View</button>
+            <script>
+                const vscode = acquireVsCodeApi();
+                document.getElementById('refreshBtn').addEventListener('click', () => {
+                    vscode.postMessage({ command: 'refresh' });
+                });
+                
+                // Add event listeners for resize buttons
+                document.querySelectorAll('.resize-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const isLeft = button.classList.contains('resize-left');
+                        const path = button.getAttribute('data-path');
+                        vscode.postMessage({ 
+                            command: isLeft ? 'increaseLeftSize' : 'increaseRightSize',
+                            path: path
+                        });
+                    });
+                });
+            </script>
+        </body>
+        </html>`;
+
+        return htmlContent;
+    }
     private _generateLayoutHtml(groups: any[], orientation: GroupOrientation, path: number[] = []): string {
         return groups.map((group, index) => {
             let content = '';
@@ -160,5 +266,4 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
 
             return `<div class="group" style="${style}" data-path="${currentPath.join(',')}">${content}</div>`;
         }).join('');
-    }
-
+    }}
