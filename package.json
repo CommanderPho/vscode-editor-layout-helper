@@ -2,11 +2,11 @@
   "name": "editor-layout-helper",
 	"displayName": "Editor Layout Helper",
 	"description": "Helps with changing and maintaining the editor layout.",
-	"version": "1.0.1",
+	"version": "1.1.0",
 	"publisher": "ssigwart",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/ssigwart/vscode-editor-layout-helper"
+		"url": "https://github.com/commanderpho/vscode-editor-layout-helper"
 	},
 	"engines": {
 		"vscode": "^1.77.0"
@@ -20,7 +20,8 @@
 		"horizontal"
 	],
 	"activationEvents": [
-		"onStartupFinished"
+		"onStartupFinished",
+		"*"
 	],
 	"browser": "./dist/extension.js",
 	"contributes": {
@@ -28,8 +29,19 @@
 			{
 				"command": "editor-layout-helper.distributeEditorsHorizontal",
 				"title": "Distribute Editors Horizontally"
-			}
-		],
+			},
+			{
+				"command": "editor-layout-helper.debugPrintEditorLayouts",
+				"title": "Print Current Editor Layouts to Console"
+			},
+			{
+				"command": "editor-layout-helper.increaseLeftEditorSize",
+				"title": "Increase Left Editor Pane Size"
+			},
+			{
+				"command": "editor-layout-helper.increaseRightEditorSize",
+				"title": "Increase Right Editor Pane Size"
+			}		],
 		"configuration": {
 			"title": "Editor Layout Helper",
 			"properties": {
