@@ -49,11 +49,10 @@
                 document.getElementById('groupsCountLabel').textContent = message.groupsCount;
                 
                 // Setup event handlers for the new buttons
-                setupResizeButtons();
+                setupResizeButtons(); // Make sure this function is defined
                 break;
         }
     });
     
     // Initial setup - notify extension we're ready
-    vscode.postMessage({ command: 'ready' });
-})();
+    vscode.postMessage({ command: 'ready' });})();

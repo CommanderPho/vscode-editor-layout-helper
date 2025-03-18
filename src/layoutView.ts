@@ -30,25 +30,6 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
         // Await the Promise to get the actual string content
         webviewView.webview.html = await this._getWebviewContent(webviewView.webview);
 
-        // Set up automatic refresh based on configuration
-        this._setupRefreshInterval();
-
-        // Listen for configuration changes
-        this._context.subscriptions.push(
-            vscode.workspace.onDidChangeConfiguration(e => {
-                if (e.affectsConfiguration('editor-layout-helper.layoutViewRefreshInterval')) {
-                    this._setupRefreshInterval();
-                }
-            })
-        );
-
-        // Listen for editor layout changes
-        this._context.subscriptions.push(
-            vscode.window.onDidChangeActiveTextEditor(() => this._updateContent()),
-            vscode.window.onDidChangeTextEditorViewColumn(() => this._updateContent()),
-            vscode.window.onDidChangeVisibleTextEditors(() => this._updateContent())
-        );
-
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(message => {
             switch (message.command) {
@@ -56,28 +37,14 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                     // Webview is ready, send initial content
                     this._updateContent();
                     break;
-                case 'refresh':
-                    this._updateContent();
-                    break;
-                case 'increaseLeftSize':
-                    vscode.commands.executeCommand('editor-layout-helper.increaseLeftEditorSize');
-                    setTimeout(() => this._updateContent(), 100);
-                    break;
-                case 'increaseRightSize':
-                    vscode.commands.executeCommand('editor-layout-helper.increaseRightEditorSize');
-                    setTimeout(() => this._updateContent(), 100);
-                    break;
-                // case 'contractSize':
-                //     this._resizeGroup(message.path, -0.1);
-                //     setTimeout(() => this._updateContent(), 100);
-                //     break;
-                // case 'expandSize':
-                //     this._resizeGroup(message.path, 0.1);
-                //     setTimeout(() => this._updateContent(), 100);
-                //     break;
+                // Other cases...
             }
         });
+
+        // Set up automatic refresh based on configuration
+        this._setupRefreshInterval();
     }
+
 
     private async _getWebviewContent(webview: vscode.Webview): Promise<string> {
         // Get URIs for resources
@@ -193,4 +160,5 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
 
             return `<div class="group" style="${style}" data-path="${currentPath.join(',')}">${content}</div>`;
         }).join('');
-    }}
+    }
+
