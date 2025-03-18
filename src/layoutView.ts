@@ -53,15 +53,22 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                     break;
                 case 'increaseLeftSize':
                     vscode.commands.executeCommand('editor-layout-helper.increaseLeftEditorSize');
-                    setTimeout(() => this._updateContent(), 100); // Update after a brief delay
+                    setTimeout(() => this._updateContent(), 100);
                     break;
                 case 'increaseRightSize':
                     vscode.commands.executeCommand('editor-layout-helper.increaseRightEditorSize');
                     setTimeout(() => this._updateContent(), 100);
                     break;
+                case 'contractSize':
+                    this._resizeGroup(message.path, -0.1);
+                    setTimeout(() => this._updateContent(), 100);
+                    break;
+                case 'expandSize':
+                    this._resizeGroup(message.path, 0.1);
+                    setTimeout(() => this._updateContent(), 100);
+                    break;
             }
         });    }
-
     private _setupRefreshInterval() {
         // Clear any existing interval
         if (this._refreshInterval) {
@@ -79,7 +86,89 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
             }, refreshInterval);
         }
     }
-
+    private async _resizeGroup(pathStr: string, sizeDelta: number) {
+        // Parse the path string into an array of indices
+        const path = pathStr.split(',').map(Number);
+        
+        // Get the current layout
+        const layout: EditorGroupLayout = await vscode.commands.executeCommand("vscode.getEditorLayout");
+        
+        // Navigate to the target group
+        let currentLevel = layout.groups;
+        let targetGroup = null;
+        let parentGroups = null;
+        let targetIndex = -1;
+        
+        for (let i = 0; i < path.length; i++) {
+            const index = path[i];
+            if (i === path.length - 1) {
+                // Last level - store the parent groups and target index
+                parentGroups = currentLevel;
+                targetIndex = index;
+                targetGroup = currentLevel[index];
+            } else if (currentLevel[index].groups) {
+                // Navigate down the hierarchy
+                currentLevel = currentLevel[index].groups;
+            } else {
+                // Path is invalid
+                return;
+            }
+        }
+        
+        if (!targetGroup || !parentGroups || targetGroup.size === undefined) {
+            return;
+        }
+        
+        // Calculate the total size of all sibling groups
+        let totalSize = 0;
+        for (let group of parentGroups) {
+            if (group.size !== undefined) {
+                totalSize += group.size;
+            }
+        }
+        
+        // Calculate the min/max allowed size
+        const minSize = 0.1; // Minimum 10% of available space
+        const maxSize = totalSize - (parentGroups.length - 1) * minSize;
+        
+        // Calculate new size with bounds checking
+        let newSize = targetGroup.size + sizeDelta;
+        newSize = Math.max(minSize, Math.min(newSize, maxSize));
+        
+        // Calculate the size difference to distribute among other groups
+        const sizeDiff = newSize - targetGroup.size;
+        if (Math.abs(sizeDiff) < 0.001) {
+            return; // No significant change
+        }
+        
+        // Update the target group size
+        targetGroup.size = newSize;
+        
+        // Distribute the size difference to other groups proportionally
+        const otherGroups = parentGroups.filter((_, i) => i !== targetIndex);
+        let totalOtherSize = 0;
+        
+        for (let group of otherGroups) {
+            if (group.size !== undefined) {
+                totalOtherSize += group.size;
+            }
+        }
+        
+        for (let group of otherGroups) {
+            if (group.size !== undefined) {
+                // Adjust proportionally to current size
+                const proportion = group.size / totalOtherSize;
+                group.size -= sizeDiff * proportion;
+                
+                // Ensure minimum size
+                group.size = Math.max(minSize, group.size);
+            }
+        }
+        
+        // Apply the new layout
+        await vscode.commands.executeCommand("vscode.setEditorLayout", layout);
+    }
+    
     public refreshView() {
         this._updateContent();
     }
@@ -161,6 +250,10 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                 button:hover {
                     background-color: var(--vscode-button-hoverBackground);
                 }
+                .button-group {
+                    display: flex;
+                    align-items: center;
+                }
                 .resize-button {
                     margin: 0 2px;
                     padding: 0 4px;
@@ -168,8 +261,14 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                     height: 18px;
                     min-width: 18px;
                     z-index: 3;
+                    border-radius: 3px;
                 }
-                .resize-left {
+                .resize-contract {
+                    background-color: var(--vscode-editorWarning-foreground);
+                }
+                .resize-expand {
+                    background-color: var(--vscode-editorInfo-foreground);
+                }                .resize-left {
                     margin-left: 3px;
                 }
                 .resize-right {
@@ -208,6 +307,28 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                         });
                     });
                 });
+
+                // Add to the script section of the HTML
+                document.querySelectorAll('.resize-contract').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const path = button.getAttribute('data-path');
+                        vscode.postMessage({ 
+                            command: 'contractSize',
+                            path: path
+                        });
+                    });
+                });
+
+                document.querySelectorAll('.resize-expand').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const path = button.getAttribute('data-path');
+                        vscode.postMessage({ 
+                            command: 'expandSize',
+                            path: path
+                        });
+                    });
+                });
+
             </script>
         </body>
         </html>`;
@@ -240,10 +361,12 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                 content = `
                 <div class="group-header">
                     <div class="group-label">Group</div>
-                    ${showResizeButtons && index > 0 ? 
-                        `<button class="resize-button resize-left" data-path="${currentPath.join(',')}"><</button>` : ''}
-                    ${showResizeButtons && index < groups.length - 1 ? 
-                        `<button class="resize-button resize-right" data-path="${currentPath.join(',')}">></button>` : ''}
+                    <div class="button-group">
+                        ${showResizeButtons ? `<button class="resize-button resize-contract" title="Contract" data-path="${currentPath.join(',')}">-</button>` : ''}
+                        ${showResizeButtons ? `<button class="resize-button resize-expand" title="Expand" data-path="${currentPath.join(',')}">+</button>` : ''}
+                        ${showResizeButtons && index > 0 ? `<button class="resize-button resize-left" title="Increase Left" data-path="${currentPath.join(',')}"><</button>` : ''}
+                        ${showResizeButtons && index < groups.length - 1 ? `<button class="resize-button resize-right" title="Increase Right" data-path="${currentPath.join(',')}">></button>` : ''}
+                    </div>
                 </div>
                 <div class="nested-groups">
                     ${this._generateLayoutHtml(group.groups, nestedOrientation, currentPath)}
@@ -255,10 +378,12 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                 content = `
                 <div class="group-header">
                     <div class="group-label">Editor Group</div>
-                    ${showResizeButtons && index > 0 ? 
-                        `<button class="resize-button resize-left" data-path="${currentPath.join(',')}"><</button>` : ''}
-                    ${showResizeButtons && index < groups.length - 1 ? 
-                        `<button class="resize-button resize-right" data-path="${currentPath.join(',')}">></button>` : ''}
+                    <div class="button-group">
+                        ${showResizeButtons ? `<button class="resize-button resize-contract" title="Contract" data-path="${currentPath.join(',')}">-</button>` : ''}
+                        ${showResizeButtons ? `<button class="resize-button resize-expand" title="Expand" data-path="${currentPath.join(',')}">+</button>` : ''}
+                        ${showResizeButtons && index > 0 ? `<button class="resize-button resize-left" title="Increase Left" data-path="${currentPath.join(',')}"><</button>` : ''}
+                        ${showResizeButtons && index < groups.length - 1 ? `<button class="resize-button resize-right" title="Increase Right" data-path="${currentPath.join(',')}">></button>` : ''}
+                    </div>
                 </div>
                 ${group.size !== undefined ? `<div class="group-size">Size: ${group.size.toFixed(2)}</div>` : ''}
             `;
@@ -266,4 +391,5 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
 
             return `<div class="group" style="${style}" data-path="${currentPath.join(',')}">${content}</div>`;
         }).join('');
-    }}
+    }
+}
