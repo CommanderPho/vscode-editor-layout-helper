@@ -2,7 +2,7 @@
   "name": "editor-layout-helper",
 	"displayName": "Editor Layout Helper",
 	"description": "Helps with changing and maintaining the editor layout.",
-	"version": "1.0.3",
+	"version": "1.1.0",
 	"publisher": "ssigwart",
 	"repository": {
 		"type": "git",

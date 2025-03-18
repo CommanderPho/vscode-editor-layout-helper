@@ -133,60 +133,95 @@ async function setEqualHorizontalWidths(): Promise<void>
  * Increase left editor pane size
  */
 async function increaseLeftEditorSize(): Promise<void> {
-	const layout: EditorGroupLayout = await vscode.commands.executeCommand("vscode.getEditorLayout");
-	console.log(`increaseLeftEditorSize() - layout: ${layout}...`);
-
-	if (layout.orientation === GroupOrientation.HORIZONTAL) {
-		console.log(`    running with top-level groups (layout.groups): ${layout.groups}...`);
-		for (let group of layout.groups) {
-			const groups = group.groups;
-			console.log(`  Running for group: ${group} with groups: ${groups}...`);
-			
-			if (groups !== undefined && groups.length > 1) {
-				// Only apply to horizontal split with at least 2 panes
-				let isApplicable = true;
-				let totalSize = 0;
-				
-				// Calculate total size and verify all groups have sizes
-				for (let horizontalGroup of groups) {
-					if (horizontalGroup.size === undefined) {
-						isApplicable = false;
-						console.log(`      found horizontalGroup with undefined size: ${horizontalGroup}! Breaking.`);
-						break;
-					}
-					totalSize += horizontalGroup.size;
-				}
-				console.log(`    totalSize: ${totalSize}.`);
-				if (isApplicable) {
-					// Calculate adjustment amount (10% of total width)
-					const adjustAmount = Math.max(1, Math.floor(totalSize * 0.1));
-					
-					// Don't let any pane get smaller than 10% of total space
-					const minSize = Math.max(1, Math.floor(totalSize * 0.1));
-					
-					// Apply adjustment - increase leftmost pane size
-					if ((groups[0].size !== undefined) && (groups[1].size !== undefined) && (groups[1].size > minSize)) {
-						const adjustedAmount = Math.min(adjustAmount, groups[1].size - minSize);
-						groups[0].size += adjustedAmount;
-						groups[1].size -= adjustedAmount;
-
-						console.log(`      applying adjustment: ${adjustedAmount}.`);
-						// Apply the new layout
-						await vscode.commands.executeCommand("vscode.setEditorLayout", layout);
-						console.log(`    done.`);
-					}
-				}
-				break; // Only adjust the first horizontal split found
-			}
-			else {
-				console.error(`      groups is undefined or has fewer than 2 items. Skipping.`);
-			}
-		}
-	}
-	else {
-		console.error(`    layout.orientation is not HORIZONTAL: layout.orientation: ${layout.orientation}!`);
-	}
+    const layout: EditorGroupLayout = await vscode.commands.executeCommand("vscode.getEditorLayout");
+    console.log(`increaseLeftEditorSize() - layout: ${layout}...`);
+    
+    // Function to adjust sizes between two groups
+    function adjustSizes(groups: any[], totalSize: number): boolean {
+        // Calculate adjustment amount (10% of total width)
+        const adjustAmount = Math.max(1, Math.floor(totalSize * 0.1));
+        
+        // Don't let any pane get smaller than 10% of total space
+        const minSize = Math.max(1, Math.floor(totalSize * 0.1));
+        
+        // Apply adjustment - increase leftmost pane size
+        if ((groups[0].size !== undefined) && (groups[1].size !== undefined) && (groups[1].size > minSize)) {
+            const adjustedAmount = Math.min(adjustAmount, groups[1].size - minSize);
+            groups[0].size += adjustedAmount;
+            groups[1].size -= adjustedAmount;
+            
+            console.log(`      applying adjustment: ${adjustedAmount}.`);
+            return true;
+        }
+        return false;
+    }
+    
+    // CASE 1: Handle top-level horizontal split
+    if (layout.orientation === GroupOrientation.HORIZONTAL && layout.groups.length > 1) {
+        console.log(`    handling top-level horizontal split with ${layout.groups.length} groups`);
+        
+        // Calculate total size of all top-level groups
+        let totalSize = 0;
+        let allSizesDefined = true;
+        
+        for (let group of layout.groups) {
+            if (group.size === undefined) {
+                allSizesDefined = false;
+                break;
+            }
+            totalSize += group.size;
+        }
+        
+        if (allSizesDefined && layout.groups.length >= 2) {
+            console.log(`    totalSize of top-level groups: ${totalSize}`);
+            if (adjustSizes(layout.groups, totalSize)) {
+                // Apply the new layout
+                await vscode.commands.executeCommand("vscode.setEditorLayout", layout);
+                console.log(`    done adjusting top-level groups.`);
+                return;
+            }
+        }
+    }
+    
+    // CASE 2: Handle nested groups
+    console.log(`    checking for nested horizontal groups...`);
+    for (let group of layout.groups) {
+        const groups = group.groups;
+        
+        if (groups !== undefined && groups.length > 1) {
+            console.log(`    found nested groups with ${groups.length} items`);
+            
+            // Calculate total size and verify all groups have sizes
+            let totalSize = 0;
+            let allSizesDefined = true;
+            
+            for (let nestedGroup of groups) {
+                if (nestedGroup.size === undefined) {
+                    allSizesDefined = false;
+                    console.log(`      found nested group with undefined size! Breaking.`);
+                    break;
+                }
+                totalSize += nestedGroup.size;
+            }
+            
+            if (allSizesDefined) {
+                console.log(`    totalSize of nested groups: ${totalSize}`);
+                if (adjustSizes(groups, totalSize)) {
+                    // Apply the new layout
+                    await vscode.commands.executeCommand("vscode.setEditorLayout", layout);
+                    console.log(`    done adjusting nested groups.`);
+                    return;
+                }
+            }
+            
+            // Only check the first set of nested groups
+            break;
+        }
+    }
+    
+    console.log(`    no suitable groups found to adjust.`);
 }
+
 
 /**
  * Increase right editor pane size
