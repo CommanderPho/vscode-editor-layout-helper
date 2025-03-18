@@ -47,11 +47,20 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
 
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(message => {
-            if (message.command === 'refresh') {
-                this._updateContent();
+            switch (message.command) {
+                case 'refresh':
+                    this._updateContent();
+                    break;
+                case 'increaseLeftSize':
+                    vscode.commands.executeCommand('editor-layout-helper.increaseLeftEditorSize');
+                    setTimeout(() => this._updateContent(), 100); // Update after a brief delay
+                    break;
+                case 'increaseRightSize':
+                    vscode.commands.executeCommand('editor-layout-helper.increaseRightEditorSize');
+                    setTimeout(() => this._updateContent(), 100);
+                    break;
             }
-        });
-    }
+        });    }
 
     private _setupRefreshInterval() {
         // Clear any existing interval
@@ -115,12 +124,19 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                     overflow: hidden;
                     position: relative;
                 }
+                .group-header {
+                    display: flex;
+                    align-items: center;
+                    position: relative;
+                    z-index: 2;
+                }
                 .group-label {
                     text-align: center;
                     font-size: 0.8em;
                     padding: 2px;
                     background-color: var(--vscode-editor-inactiveSelectionBackground);
                     color: var(--vscode-editor-selectionForeground);
+                    flex-grow: 1;
                 }
                 .group-size {
                     position: absolute;
@@ -145,6 +161,20 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                 button:hover {
                     background-color: var(--vscode-button-hoverBackground);
                 }
+                .resize-button {
+                    margin: 0 2px;
+                    padding: 0 4px;
+                    font-size: 0.8em;
+                    height: 18px;
+                    min-width: 18px;
+                    z-index: 3;
+                }
+                .resize-left {
+                    margin-left: 3px;
+                }
+                .resize-right {
+                    margin-right: 3px;
+                }
                 .info {
                     margin-top: 10px;
                     font-size: 0.9em;
@@ -166,17 +196,29 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                 document.getElementById('refreshBtn').addEventListener('click', () => {
                     vscode.postMessage({ command: 'refresh' });
                 });
+                
+                // Add event listeners for resize buttons
+                document.querySelectorAll('.resize-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const isLeft = button.classList.contains('resize-left');
+                        const path = button.getAttribute('data-path');
+                        vscode.postMessage({ 
+                            command: isLeft ? 'increaseLeftSize' : 'increaseRightSize',
+                            path: path
+                        });
+                    });
+                });
             </script>
         </body>
         </html>`;
 
         return htmlContent;
     }
-
-    private _generateLayoutHtml(groups: any[], orientation: GroupOrientation): string {
-        return groups.map(group => {
+    private _generateLayoutHtml(groups: any[], orientation: GroupOrientation, path: number[] = []): string {
+        return groups.map((group, index) => {
             let content = '';
             let style = '';
+            const currentPath = [...path, index];
             
             // Add size style if available
             if (group.size !== undefined) {
@@ -185,6 +227,9 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                     : `flex-basis: ${group.size * 100}%;`;
             }
 
+            // Only show resize buttons for horizontal groups
+            const showResizeButtons = orientation === GroupOrientation.HORIZONTAL && groups.length > 1;
+            
             // Generate the group's HTML content
             if (group.groups && group.groups.length > 0) {
                 // This is a group with nested groups
@@ -193,21 +238,32 @@ export class EditorLayoutViewProvider implements vscode.WebviewViewProvider {
                     : GroupOrientation.HORIZONTAL;
                 
                 content = `
+                <div class="group-header">
                     <div class="group-label">Group</div>
-                    <div class="nested-groups">
-                        ${this._generateLayoutHtml(group.groups, nestedOrientation)}
-                    </div>
-                    ${group.size !== undefined ? `<div class="group-size">Size: ${group.size.toFixed(2)}</div>` : ''}
-                `;
+                    ${showResizeButtons && index > 0 ? 
+                        `<button class="resize-button resize-left" data-path="${currentPath.join(',')}"><</button>` : ''}
+                    ${showResizeButtons && index < groups.length - 1 ? 
+                        `<button class="resize-button resize-right" data-path="${currentPath.join(',')}">></button>` : ''}
+                </div>
+                <div class="nested-groups">
+                    ${this._generateLayoutHtml(group.groups, nestedOrientation, currentPath)}
+                </div>
+                ${group.size !== undefined ? `<div class="group-size">Size: ${group.size.toFixed(2)}</div>` : ''}
+            `;
             } else {
                 // This is a leaf group
                 content = `
+                <div class="group-header">
                     <div class="group-label">Editor Group</div>
-                    ${group.size !== undefined ? `<div class="group-size">Size: ${group.size.toFixed(2)}</div>` : ''}
-                `;
+                    ${showResizeButtons && index > 0 ? 
+                        `<button class="resize-button resize-left" data-path="${currentPath.join(',')}"><</button>` : ''}
+                    ${showResizeButtons && index < groups.length - 1 ? 
+                        `<button class="resize-button resize-right" data-path="${currentPath.join(',')}">></button>` : ''}
+                </div>
+                ${group.size !== undefined ? `<div class="group-size">Size: ${group.size.toFixed(2)}</div>` : ''}
+            `;
             }
 
-            return `<div class="group" style="${style}">${content}</div>`;
+            return `<div class="group" style="${style}" data-path="${currentPath.join(',')}">${content}</div>`;
         }).join('');
-    }
-}
+    }}
